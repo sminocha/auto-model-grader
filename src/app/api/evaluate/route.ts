@@ -10,13 +10,6 @@ const gateway = createGateway({
     baseURL: 'https://ai-gateway.vercel.sh/v1/ai', // the default base URL
 })
 
-// Debug: Check if the API key is being read
-console.log('=== GATEWAY DEBUG ===');
-console.log('AI_GATEWAY_API_KEY exists:', !!process.env.AI_GATEWAY_API_KEY);
-console.log('AI_GATEWAY_API_KEY first 10 chars:', process.env.AI_GATEWAY_API_KEY?.substring(0, 10));
-console.log('AI_GATEWAY_API_KEY length:', process.env.AI_GATEWAY_API_KEY?.length);
-console.log('====================');
-
 async function callModel(modelId: string, prompt: string) {
     const startTime = Date.now()
     let firstTokenTime: number | null = null
@@ -34,7 +27,7 @@ async function callModel(modelId: string, prompt: string) {
         const result = await streamText({
             model: gateway(config.gatewayId), // Use the proper provider/model format
             prompt: prompt,
-            maxCompletionTokens: 500,
+            maxOutputTokens: 500,
             temperature: 0.7,
         })
 
@@ -149,7 +142,7 @@ async function callModelWithProgressCallback(
         const result = await streamText({
             model: gateway(modelId),
             prompt: prompt,
-            maxCompletionTokens: 500,
+            maxOutputTokens: 500,
             temperature: 0.7,
         })
 
@@ -228,7 +221,7 @@ async function callModelFallback(modelId: string, prompt: string) {
     const result = await generateText({
       model: provider(modelId),
       prompt: prompt,
-      maxCompletionTokens: 500,
+      maxOutputTokens: 500,
     })
 
     const endTime = Date.now()
@@ -292,9 +285,9 @@ async function judgeResponse(prompt: string, response: string, modelName: string
     try {
         // Use Claude Haiku as the judge (faster and cheaper)
         const result = await generateText({
-            model: gateway('claude-3-haiku-20240307'),
+            model: gateway('anthropic/claude-3-5-haiku'),
             prompt: judgePrompt,
-            maxCompletionTokens: 200,
+            maxOutputTokens: 200,
         })
 
         const text = result.text
@@ -320,19 +313,6 @@ async function judgeResponse(prompt: string, response: string, modelName: string
 }
 
 export async function POST(request: NextRequest) {
-
-    // DEBUGGING
-    try {
-        console.log('DEBUG: Testing gateway connection...')
-        const testResult = await generateText({
-            model: gateway('openai/gpt-4o'),
-            prompt: 'Hello',
-            maxCompletionTokens: 10
-        })
-        console.log('Gateway test successful:', testResult.text);
-    } catch (error) {
-        console.error('Gateway test failed:', error);
-    }
 
     try {
         const body = await request.json()
