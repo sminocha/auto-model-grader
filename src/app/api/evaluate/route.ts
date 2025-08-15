@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateText, streamText } from 'ai'
 import { ModelResult } from '@/types'
 import { createGateway } from '@ai-sdk/gateway'
+import { modelConfig, defaultModels } from '@/lib/models'
 
 // Vercel AI Gateway configuration
 const gateway = createGateway({
@@ -21,18 +22,7 @@ async function callModel(modelId: string, prompt: string) {
     let firstTokenTime: number | null = null
     
     try {
-        const modelConfig = {
-            'gpt-4o': { name: 'GPT-4o', provider: 'OpenAI', gatewayId: 'openai/gpt-4o' },
-            'gpt-4o-mini': { name: 'GPT-4o Mini', provider: 'OpenAI', gatewayId: 'openai/gpt-4o-mini' },
-            'gpt-5': { name: 'GPT-5', provider: 'OpenAI', gatewayId: 'openai/gpt-5' },
-            'claude-3-7-sonnet': { name: 'Claude 3.7 Sonnet', provider: 'Anthropic', gatewayId: 'anthropic/claude-3-7-sonnet' },
-            'claude-3-5-sonnet-20241022': { name: 'Claude 3.5 Sonnet', provider: 'Anthropic', gatewayId: 'anthropic/claude-3-5-sonnet-20241022' },
-            'claude-3-5-haiku': { name: 'Claude 3.5 Haiku', provider: 'Anthropic', gatewayId: 'anthropic/claude-3-5-haiku' },
-            // 'llama-3.1-70b-instruct': { name: 'Llama 3.1 70B', provider: 'Meta', gatewayId: 'meta/llama-3.1-70b-instruct' },
-            // 'llama-3.1-8b-instruct': { name: 'Llama 3.1 8B', provider: 'Meta', gatewayId: 'meta/llama-3.1-8b-instruct' },
-            'llama-3.1-8b': { name: 'Llama 3.1 8B', provider: 'Meta', gatewayId: 'meta/llama-3.1-8b' },
-            'gemini-2.5-flash': { name: "Gemini 2.5 Flash", provider: "Google", gatewayId: 'google/gemini-2.5-flash' }
-        }
+        // Using shared model config from lib/models.ts
 
         const config = modelConfig[modelId as keyof typeof modelConfig] || { 
             name: modelId, 
@@ -44,7 +34,7 @@ async function callModel(modelId: string, prompt: string) {
         const result = await streamText({
             model: gateway(config.gatewayId), // Use the proper provider/model format
             prompt: prompt,
-            maxTokens: 500,
+            maxCompletionTokens: 500,
             temperature: 0.7,
         })
 
@@ -159,7 +149,7 @@ async function callModelWithProgressCallback(
         const result = await streamText({
             model: gateway(modelId),
             prompt: prompt,
-            maxTokens: 500,
+            maxCompletionTokens: 500,
             temperature: 0.7,
         })
 
@@ -238,7 +228,7 @@ async function callModelFallback(modelId: string, prompt: string) {
     const result = await generateText({
       model: provider(modelId),
       prompt: prompt,
-      maxTokens: 500,
+      maxCompletionTokens: 500,
     })
 
     const endTime = Date.now()
@@ -304,7 +294,7 @@ async function judgeResponse(prompt: string, response: string, modelName: string
         const result = await generateText({
             model: gateway('claude-3-haiku-20240307'),
             prompt: judgePrompt,
-            maxTokens: 200,
+            maxCompletionTokens: 200,
         })
 
         const text = result.text
@@ -337,7 +327,7 @@ export async function POST(request: NextRequest) {
         const testResult = await generateText({
             model: gateway('openai/gpt-4o'),
             prompt: 'Hello',
-            maxTokens: 10
+            maxCompletionTokens: 10
         })
         console.log('Gateway test successful:', testResult.text);
     } catch (error) {
@@ -345,35 +335,30 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { prompt } = await request.json()
+        const body = await request.json()
+        const { prompt, models: requestModels } = body
 
         if (!prompt || typeof prompt !== 'string') {
         return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
         }
 
-
-        // TODO: allow user to select models to try
-        // Define models to test - use the correct format
-        const models = [
-            'gpt-4o',                       // This will map to 'openai/gpt-4o'
-            'claude-3-7-sonnet',            // This will map to 'anthropic/claude-3-7-sonnet'
-            'claude-3-5-haiku'
-        ]
+        // Use models from request or fall back to defaults
+        const models = requestModels || defaultModels
 
         // Call all models in parallel
         console.log('Calling models in parallel...')
-        const modelPromises = models.map(modelId => callModel(modelId, prompt))
+        const modelPromises = models.map((modelId: string) => callModel(modelId, prompt))
         const modelResponses = await Promise.all(modelPromises)
 
         // Judge all responses in parallel
         console.log('Judging responses...')
-        const judgePromises = modelResponses.map(response => 
+        const judgePromises = modelResponses.map((response: any) => 
         judgeResponse(prompt, response.response, response.modelName)
         )
         const scores = await Promise.all(judgePromises)
 
         // Combine results
-        const results: ModelResult[] = modelResponses.map((response, index) => ({
+        const results: ModelResult[] = modelResponses.map((response: any, index: number) => ({
         ...response,
         score: scores[index]
         }))

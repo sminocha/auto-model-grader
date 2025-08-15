@@ -9,7 +9,7 @@ export default function Home() {
   const [results, setResults] = useState<ModelResult[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleEvaluate = async (prompt: string) => {
+  const handleEvaluate = async (prompt: string, selectedModels: string[]) => {
     setIsLoading(true)
     setResults(null)
     
@@ -19,7 +19,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, models: selectedModels }),
       })
 
       if (!response.ok) {

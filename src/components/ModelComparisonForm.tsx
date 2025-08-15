@@ -1,20 +1,29 @@
 'use client'
 
 import { useState } from 'react'
+import { ModelSelector } from './ModelSelector'
+import { defaultModels } from '@/lib/models'
 
 interface ModelComparisonFormProps {
-  onEvaluate: (prompt: string) => void
+  onEvaluate: (prompt: string, selectedModels: string[]) => void
   isLoading: boolean
 }
 
 export function ModelComparisonForm({ onEvaluate, isLoading }: ModelComparisonFormProps) {
   const [prompt, setPrompt] = useState('')
+  const [selectedModels, setSelectedModels] = useState<string[]>(defaultModels)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (prompt.trim() && !isLoading) {
-      onEvaluate(prompt.trim())
+      onEvaluate(prompt.trim(), selectedModels)
     }
+  }
+
+  const handleModelChange = (index: number, modelId: string) => {
+    const newSelectedModels = [...selectedModels]
+    newSelectedModels[index] = modelId
+    setSelectedModels(newSelectedModels)
   }
 
   const examplePrompts = [
@@ -40,6 +49,33 @@ export function ModelComparisonForm({ onEvaluate, isLoading }: ModelComparisonFo
               className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isLoading}
             />
+          </div>
+
+          {/* Model Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Select Models to Compare
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <ModelSelector
+                selectedModel={selectedModels[0]}
+                onModelChange={(modelId) => handleModelChange(0, modelId)}
+                label="Model 1"
+                disabled={isLoading}
+              />
+              <ModelSelector
+                selectedModel={selectedModels[1]}
+                onModelChange={(modelId) => handleModelChange(1, modelId)}
+                label="Model 2"
+                disabled={isLoading}
+              />
+              <ModelSelector
+                selectedModel={selectedModels[2]}
+                onModelChange={(modelId) => handleModelChange(2, modelId)}
+                label="Model 3"
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

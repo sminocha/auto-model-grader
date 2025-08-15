@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ModelResult } from '@/types'
 
 interface ResultsDisplayProps {
@@ -7,8 +8,20 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({ results }: ResultsDisplayProps) {
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+  
   // Sort results by score (highest first)
   const sortedResults = [...results].sort((a, b) => b.score.rating - a.score.rating)
+
+  const toggleExpanded = (modelName: string) => {
+    const newExpanded = new Set(expandedCards)
+    if (newExpanded.has(modelName)) {
+      newExpanded.delete(modelName)
+    } else {
+      newExpanded.add(modelName)
+    }
+    setExpandedCards(newExpanded)
+  }
 
   const formatTime = (ms: number) => {
     if (ms < 1000) return `${ms}ms`
@@ -105,11 +118,37 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
 
             {/* Response Preview */}
             <div className="p-6">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Response</h4>
-              <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 max-h-32 overflow-y-auto">
-                {result.response.length > 200 
-                  ? `${result.response.substring(0, 200)}...` 
-                  : result.response
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-700">Response</h4>
+                {result.response.length > 200 && (
+                  <button
+                    onClick={() => toggleExpanded(result.modelName)}
+                    className="flex items-center text-xs px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full transition-colors"
+                  >
+                    {expandedCards.has(result.modelName) ? (
+                      <>
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        View Full Response
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              <div className={`bg-gray-50 rounded-lg p-3 text-sm text-gray-700 transition-all duration-300 ${
+                expandedCards.has(result.modelName) ? 'max-h-none' : 'max-h-32 overflow-hidden'
+              }`}>
+                {expandedCards.has(result.modelName) || result.response.length <= 200
+                  ? result.response
+                  : `${result.response.substring(0, 200)}...`
                 }
               </div>
               
