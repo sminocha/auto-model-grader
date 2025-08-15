@@ -27,7 +27,11 @@ A Next.js application that compares AI model performance side-by-side with autom
    ```bash
    cp env.example .env.local
    ```
-   Add your API keys:
+   Add your Vercel AI Gateway configuration:
+   - `VERCEL_AI_GATEWAY_URL`: Your gateway URL from [Vercel AI Gateway](https://vercel.com/dashboard/ai-gateway)
+   - `VERCEL_AI_GATEWAY_KEY`: Your gateway API key
+   
+   Alternatively, you can use direct API keys:
    - `OPENAI_API_KEY`: Get from [OpenAI Platform](https://platform.openai.com/api-keys)
    - `ANTHROPIC_API_KEY`: Get from [Anthropic Console](https://console.anthropic.com/)
 
