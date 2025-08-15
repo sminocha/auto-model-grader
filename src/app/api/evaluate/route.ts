@@ -197,6 +197,7 @@ async function callModelWithProgressCallback(
 }
 
 // Mock function to simulate Vercel Gateway, use as fallback if call to Vercel gateway fails
+// TODO: DELETE ONE OF THESE FALLBACK FUNCTIONS
 async function callModelFallback(modelId: string, prompt: string) {
   const startTime = Date.now()
   let firstTokenTime = 0
@@ -207,14 +208,14 @@ async function callModelFallback(modelId: string, prompt: string) {
     let modelName: string
     
     if (modelId.includes('gpt')) {
-      provider = openai
+      provider = 'OpenAI'
       modelName = 'GPT-4o'
     } else if (modelId.includes('claude')) {
-      provider = anthropic
+      provider = 'Anthropic'
       modelName = 'Claude 3.5 Sonnet'
     } else {
       // For this demo, we'll simulate Llama 3 with OpenAI
-      provider = openai
+      provider = 'OpenAI'
       modelName = 'Llama 3.1 (via OpenAI)'
     }
 
