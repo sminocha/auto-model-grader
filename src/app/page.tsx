@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import { ModelComparisonForm } from '@/components/ModelComparisonForm'
 import { ResultsDisplay } from '@/components/ResultsDisplay'
-import { ModelResult } from '@/types'
+import { ModelResult, RubricType } from '@/types'
 
 export default function Home() {
   const [results, setResults] = useState<ModelResult[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleEvaluate = async (prompt: string, selectedModels: string[]) => {
+  const handleEvaluate = async (prompt: string, selectedModels: string[], rubricType: RubricType) => {
     setIsLoading(true)
     setResults(null)
     
@@ -19,7 +19,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, models: selectedModels }),
+        body: JSON.stringify({ prompt, models: selectedModels, rubricType }),
       })
 
       if (!response.ok) {
@@ -45,8 +45,8 @@ export default function Home() {
             AI Model Performance Grader
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Compare multiple AI models side-by-side with automated scoring. 
-            Get <span className="font-semibold text-gray-800">data-informed insights</span>, not just vibes.
+            Stop vibe-comparing. Get automated,
+            <span className="font-semibold text-gray-800"> head-to-head model comparisons powered by task-specific rubrics</span> for code generation, summarization, and creative writing.
           </p>
         </div>
 

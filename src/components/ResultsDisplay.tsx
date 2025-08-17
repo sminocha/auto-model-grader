@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ModelResult } from '@/types'
+import { rubricDefinitions } from '@/lib/rubrics'
 
 interface ResultsDisplayProps {
   results: ModelResult[]
@@ -32,6 +33,71 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
     if (score >= 4.5) return 'text-green-600 bg-green-50'
     if (score >= 3.5) return 'text-yellow-600 bg-yellow-50'
     return 'text-red-600 bg-red-50'
+  }
+
+  const getProgressBarColor = (score: number) => {
+    if (score >= 4.5) return 'bg-green-500'
+    if (score >= 3.5) return 'bg-yellow-500'
+    return 'bg-red-500'
+  }
+
+  const renderStarRating = (score: number) => {
+    const stars = []
+    for (let i = 1; i <= 5; i++) {
+      const isFullStar = i <= Math.floor(score)
+      const isHalfStar = i === Math.floor(score) + 1 && score % 1 === 0.5
+      
+      if (isFullStar) {
+        // Full star
+        stars.push(
+          <svg
+            key={i}
+            className="w-4 h-4 text-yellow-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        )
+      } else if (isHalfStar) {
+        // Half star - use a container with clipping
+        stars.push(
+          <div key={i} className="relative w-4 h-4">
+            {/* Background empty star */}
+            <svg
+              className="absolute w-4 h-4 text-gray-300"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            {/* Half filled star */}
+            <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+              <svg
+                className="w-4 h-4 text-yellow-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </div>
+          </div>
+        )
+      } else {
+        // Empty star
+        stars.push(
+          <svg
+            key={i}
+            className="w-4 h-4 text-gray-300"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        )
+      }
+    }
+    return <div className="flex items-center space-x-1">{stars}</div>
   }
 
   const getRankBadge = (index: number) => {
@@ -91,9 +157,60 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
               </div>
             </div>
 
+                         {/* Criteria Breakdown */}
+             {result.score.criteria && (
+               <div className="p-6 border-b border-gray-100">
+                 <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                   <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                   </svg>
+                   Detailed Criteria Scores
+                 </h4>
+                <div className="space-y-3">
+                  {Object.entries(result.score.criteria).map(([criterionKey, criterionResult]) => {
+                    // Find the criterion definition to get the display name
+                    let criterionName = criterionKey
+                    for (const rubric of Object.values(rubricDefinitions)) {
+                      if (rubric.criteria[criterionKey]) {
+                        criterionName = rubric.criteria[criterionKey].name
+                        break
+                      }
+                    }
+                    
+                    return (
+                      <div key={criterionKey} className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-700">{criterionName}</span>
+                            <div className="flex items-center space-x-2">
+                              {renderStarRating(criterionResult.score)}
+                              <span className="text-sm font-bold text-gray-900">
+                                {criterionResult.score.toFixed(1)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${getProgressBarColor(criterionResult.score)}`}
+                              style={{ width: `${(criterionResult.score / 5) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Metrics */}
             <div className="p-6 border-b border-gray-100">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Performance Metrics</h4>
+              <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Performance Metrics
+              </h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">TTFT</span>
@@ -117,9 +234,14 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
             </div>
 
             {/* Response Preview */}
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-medium text-gray-700">Response</h4>
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-gray-800 flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  Response
+                </h4>
                 {result.response.length > 200 && (
                   <button
                     onClick={() => toggleExpanded(result.modelName)}
@@ -143,7 +265,7 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
                   </button>
                 )}
               </div>
-              <div className={`bg-gray-50 rounded-lg p-3 text-sm text-gray-700 transition-all duration-300 ${
+              <div className={`bg-gray-50 rounded-lg p-4 text-sm text-gray-700 transition-all duration-300 whitespace-pre-wrap leading-relaxed ${
                 expandedCards.has(result.modelName) ? 'max-h-none' : 'max-h-32 overflow-hidden'
               }`}>
                 {expandedCards.has(result.modelName) || result.response.length <= 200
@@ -151,16 +273,50 @@ export function ResultsDisplay({ results }: ResultsDisplayProps) {
                   : `${result.response.substring(0, 200)}...`
                 }
               </div>
-              
-              {/* Judge Reasoning */}
-              <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">AI Judge Analysis</h4>
-                <p className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                  {result.score.reasoning}
-                </p>
+            </div>
+
+            {/* Judge Reasoning */}
+            <div className="p-6">
+                <h4 className="text-sm font-bold text-gray-800 mb-3 flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Explanation of AI Judge's Grades
+                </h4>
+                <div className="text-sm text-gray-700 bg-blue-50 p-4 rounded-lg space-y-4 mx-1">
+                  <div>
+                    <span className="font-medium text-blue-800 text-sm">Overall Assessment:</span>
+                    <p className="mt-2 text-gray-700 leading-relaxed">{result.score.reasoning}</p>
+                  </div>
+                  
+                  {/* Detailed criteria reasoning */}
+                  {result.score.criteria && (
+                    <div>
+                      <span className="font-medium text-blue-800 text-sm">Detailed Criteria Analysis:</span>
+                      <div className="mt-3 space-y-3">
+                        {Object.entries(result.score.criteria).map(([criterionKey, criterionResult]) => {
+                          // Find the criterion definition to get the display name
+                          let criterionName = criterionKey
+                          for (const rubric of Object.values(rubricDefinitions)) {
+                            if (rubric.criteria[criterionKey]) {
+                              criterionName = rubric.criteria[criterionKey].name
+                              break
+                            }
+                          }
+                          
+                          return (
+                            <div key={criterionKey} className="bg-white/50 rounded p-3">
+                              <div className="font-medium text-gray-800 mb-2">{criterionName}</div>
+                              <p className="text-gray-700 leading-relaxed text-sm">{criterionResult.reasoning}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
         ))}
       </div>
 

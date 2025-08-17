@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateText, streamText } from 'ai'
-import { ModelResult } from '@/types'
+import { ModelResult, RubricType, RubricCriteria } from '@/types'
 import { createGateway } from '@ai-sdk/gateway'
 import { modelConfig, defaultModels } from '@/lib/models'
+import { rubricDefinitions, defaultRubric } from '@/lib/rubrics'
 
 // Vercel AI Gateway configuration
 const gateway = createGateway({
@@ -207,7 +208,7 @@ async function callModelFallback(modelId: string, prompt: string) {
     let provider: any
     let modelName: string
     
-    if (modelId.includes('gpt')) {
+    if (modelId.includes('gpt')) {  
       provider = 'OpenAI'
       modelName = 'GPT-4o'
     } else if (modelId.includes('claude')) {
@@ -266,49 +267,104 @@ function generateMockResponse(prompt: string, modelId: string): string {
   return responses[modelId as keyof typeof responses] || `Mock response for ${modelId}: ${prompt.substring(0, 100)}...`
 }
 
-async function judgeResponse(prompt: string, response: string, modelName: string) {
-    // TODO: add rubrics from gemini??
-    const judgePrompt = `   
-        You are an expert AI evaluator. Rate the following response on a scale of 1-5 based on:
-        - Instruction following (did it answer what was asked?)
-        - Quality and accuracy of the response
-        - Clarity and usefulness
-        - Completeness
-
-        Original Prompt: "${prompt}"
-
-        Model: ${modelName}
-        Response: "${response}"
-
-        Provide your rating (1-5) and brief reasoning. Format: Rating: X.X | Reasoning: [your analysis]
-        `
-
+async function judgeResponse(prompt: string, response: string, modelName: string, rubricType: RubricType = defaultRubric) {
+    const rubric = rubricDefinitions[rubricType]
+    const criteria = rubric.criteria
+    
     try {
-        // Use Claude Haiku as the judge (faster and cheaper)
-        const result = await generateText({
-            model: gateway('anthropic/claude-3-5-haiku'),
-            prompt: judgePrompt,
-            maxOutputTokens: 200,
-        })
-
-        const text = result.text
-        const ratingMatch = text.match(/Rating:\s*([0-5]\.?[0-9]?)/)
-        const reasoningMatch = text.match(/Reasoning:\s*(.+)/)
+        // Evaluate each criterion separately for detailed scoring
+        const criteriaResults: RubricCriteria = {}
         
+        for (const [criterionKey, criterion] of Object.entries(criteria)) {
+            const judgePrompt = `
+You are an expert AI evaluator. Evaluate the following response on the criterion "${criterion.name}".
+
+${criterion.prompt}
+
+Original Prompt: "${prompt}"
+Model: ${modelName}
+Response: "${response}"
+
+Rate this response from 1-5 where:
+1 = Very Poor
+2 = Poor  
+3 = Average
+4 = Good
+5 = Excellent
+
+Provide ONLY your rating and a single sentence justification in this exact format:
+Rating: X.X
+Reasoning: [One clear sentence explaining why you gave this score]
+
+Do not include any other text, bullet points, or formatting.
+            `
+
+            try {
+                const result = await generateText({
+                    model: gateway('anthropic/claude-3-5-haiku'),
+                    prompt: judgePrompt,
+                    maxOutputTokens: 150,
+                })
+
+                const text = result.text.trim()
+                const ratingMatch = text.match(/Rating:\s*([1-5](?:\.[0-9])?)/i)
+                const reasoningMatch = text.match(/Reasoning:\s*(.+?)(?:\n|$)/)
+                
+                const rawScore = ratingMatch ? parseFloat(ratingMatch[1]) : 3.0
+                let reasoning = reasoningMatch ? reasoningMatch[1].trim() : 'Unable to parse judge reasoning'
+                
+                // Clean up reasoning - remove any remaining formatting artifacts
+                reasoning = reasoning.replace(/^\[|\]$/g, '').trim()
+                
+                criteriaResults[criterionKey] = {
+                    score: Math.round(rawScore * 2) / 2, // Round to nearest 0.5
+                    reasoning: reasoning
+                }
+            } catch (error) {
+                console.error(`Error judging criterion ${criterionKey}:`, error)
+                // Mock scoring for demo
+                const mockScore = 2.5 + Math.random() * 2.5 // Score between 2.5-5.0
+                criteriaResults[criterionKey] = {
+                    score: Math.round(mockScore * 2) / 2, // Round to nearest 0.5
+                    reasoning: `Mock evaluation for ${criterion.name} - demo mode with simulated analysis.`
+                }
+            }
+        }
+
+        // Calculate overall rating as average of all criteria
+        const scores = Object.values(criteriaResults).map(c => c.score)
+        const overallRating = scores.reduce((sum, score) => sum + score, 0) / scores.length
+
+        // Create overall reasoning summary
+        const overallReasoning = `Overall score based on ${rubric.name} rubric: ${Object.entries(criteriaResults)
+            .map(([key, result]) => `${criteria[key].name}: ${result.score}/5`)
+            .join(', ')}`
+
         return {
-        rating: ratingMatch ? parseFloat(ratingMatch[1]) : 3.5,
-        reasoning: reasoningMatch ? reasoningMatch[1].trim() : 'Unable to parse judge reasoning'
+            rating: Math.round(overallRating * 10) / 10, // Round overall rating to nearest 0.1
+            reasoning: overallReasoning,
+            criteria: criteriaResults
         }
     } catch (error) {
         console.error('Error in judging:', error)
         
-        // Mock judging for demo
-        const mockRatings = [3.2, 3.8, 4.1, 4.5, 2.9, 3.7, 4.3]
-        const rating = mockRatings[Math.floor(Math.random() * mockRatings.length)]
+        // Mock judging for demo with criteria breakdown
+        const mockCriteria: RubricCriteria = {}
+        for (const [criterionKey, criterion] of Object.entries(criteria)) {
+            const mockScore = 2.5 + Math.random() * 2.5
+            mockCriteria[criterionKey] = {
+                score: Math.round(mockScore * 2) / 2, // Round to nearest 0.5
+                reasoning: `Mock evaluation for ${criterion.name} - demo mode with simulated analysis.`
+            }
+        }
+        
+        const scores = Object.values(mockCriteria).map(c => c.score)
+        const overallRating = scores.reduce((sum, score) => sum + score, 0) / scores.length
         
         return {
-        rating,
-        reasoning: `Mock judge score for ${modelName}. Response shows ${rating > 4 ? 'excellent' : rating > 3.5 ? 'good' : 'adequate'} quality with clear ${rating > 4 ? 'comprehensive coverage' : rating > 3.5 ? 'adequate coverage' : 'basic coverage'} of the prompt requirements. [Demo mode - would contain actual AI judge analysis]`
+            rating: Math.round(overallRating * 10) / 10, // Round overall rating to nearest 0.1
+            reasoning: `Mock overall score for ${modelName} using ${rubric.name} rubric. [Demo mode]`,
+            criteria: mockCriteria
         }
     }
 }
@@ -317,7 +373,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json()
-        const { prompt, models: requestModels } = body
+        const { prompt, models: requestModels, rubricType } = body
 
         if (!prompt || typeof prompt !== 'string') {
         return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
@@ -325,16 +381,17 @@ export async function POST(request: NextRequest) {
 
         // Use models from request or fall back to defaults
         const models = requestModels || defaultModels
+        const selectedRubric: RubricType = rubricType || defaultRubric
 
         // Call all models in parallel
         console.log('Calling models in parallel...')
         const modelPromises = models.map((modelId: string) => callModel(modelId, prompt))
         const modelResponses = await Promise.all(modelPromises)
 
-        // Judge all responses in parallel
-        console.log('Judging responses...')
+        // Judge all responses in parallel using the selected rubric
+        console.log(`Judging responses using ${selectedRubric} rubric...`)
         const judgePromises = modelResponses.map((response: any) => 
-        judgeResponse(prompt, response.response, response.modelName)
+        judgeResponse(prompt, response.response, response.modelName, selectedRubric)
         )
         const scores = await Promise.all(judgePromises)
 
